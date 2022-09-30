@@ -18,10 +18,10 @@ public class GraphMailService
         string? clientId = _config["clientId"];
         string? clientSecret = _config["clientSecret"];
 
-        ClientSecretCredential credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-        GraphServiceClient graphClient = new GraphServiceClient(credential);
+        ClientSecretCredential credential = new(tenantId, clientId, clientSecret);
+        GraphServiceClient graphClient = new(credential);
 
-        var message = new Message
+        Message message = new()
         {
             Subject = subject,
             Body = new ItemBody
@@ -41,7 +41,7 @@ public class GraphMailService
             }
         };
 
-        var saveToSentItems = true;
+        bool saveToSentItems = true;
 
         await graphClient.Users[fromAddress]
           .SendMail(message, saveToSentItems)
