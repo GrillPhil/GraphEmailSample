@@ -7,9 +7,9 @@ builder.Services.AddScoped<GraphMailService>();
 var app = builder.Build();
 
 app.MapGet("/", async(GraphMailService mailService) => await mailService.SendAsync(
-    "bauknecht@medialesson.de",
-    "bauknecht@medialesson.de",
-    "Testmail",
-    "Hello world."));
+    "<YOUR_SENDER_ADDRESS>",
+    "<YOUR_RECIPENT_ADDRESS>",
+    "<YOUR_SUBJECT>",
+    "<YOUR_MESSAGE>"));
 
 app.Run();
