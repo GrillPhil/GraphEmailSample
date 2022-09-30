@@ -1,63 +1,51 @@
-﻿using MyEmailService.Model;
-using Newtonsoft.Json;
-using System.Text;
+﻿using Azure.Identity;
+using Microsoft.Graph;
 
 namespace MyEmailService;
 
 public class GraphMailService
 {
-    private const string ENDPOINT = "https://graph.microsoft.com/beta/";
-
-    private readonly GraphAuthService _authService;
     private readonly IConfiguration _config;
 
-    public GraphMailService(IConfiguration config, GraphAuthService authService)
+    public GraphMailService(IConfiguration config)
     {
-        _authService = authService;
         _config = config;
     }
 
     public async Task SendAsync(string fromAddress, string toAddress, string subject, string content)
     {
-        string scope = "Mail.Send";
-        HttpClient client = await CreateHttpClientWithAuthorizationAsync(scope);
+        string? tenantId = _config["tenantId"];
+        string? clientId = _config["clientId"];
+        string? clientSecret = _config["clientSecret"];
 
-        string requestUrl = $"{ENDPOINT}users/{fromAddress}/sendMail";
-        GraphSendMailRequest request = new()
+        ClientSecretCredential credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+        GraphServiceClient graphClient = new GraphServiceClient(credential);
+
+        var message = new Message
         {
-            Message = new GraphMessage
+            Subject = subject,
+            Body = new ItemBody
             {
-                Subject = subject,
-                Body = new GraphItemBody
+                ContentType = BodyType.Text,
+                Content = content
+            },
+            ToRecipients = new List<Recipient>()
+            {
+                new Recipient
                 {
-                    Content = content
-                },
-                ToRecipients = new GraphRecipient[]
-                {
-                    new GraphRecipient
+                    EmailAddress = new EmailAddress
                     {
-                        EmailAddress = new GraphEmailAddress
-                        {
-                            Address = toAddress
-                        }
+                        Address = toAddress
                     }
                 }
             }
         };
 
-        var requestBody = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
-        await client.PostAsync(requestUrl, requestBody);
-    }
+        var saveToSentItems = true;
 
-    private async Task<HttpClient> CreateHttpClientWithAuthorizationAsync(string scope)
-    {
-        string? tenantId = _config["tenantId"];
-        string? clientId = _config["clientId"];
-        string? clientSecret = _config["clientSecret"];
-        string? token = await _authService.GetAccessTokenAsync(tenantId, clientId, clientSecret, scope);
-
-        HttpClient client = new();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-        return client;
+        await graphClient.Users[fromAddress]
+          .SendMail(message, saveToSentItems)
+          .Request()
+          .PostAsync();
     }
 }
